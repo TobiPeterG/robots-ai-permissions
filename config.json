@@ -1,0 +1,8 @@
+{
+  "icann.account.username": "USERNAME",
+  "icann.account.password": "PASSWORD",
+  "authentication.base.url": "https://account-api.icann.org",
+  "czds.base.url": "https://czds-api.icann.org",
+  "_comment": "Optional tlds: to specify a subset of tlds to download. Missing or empty [] means downloading all APPROVED tlds.",
+  "tlds": []
+}
