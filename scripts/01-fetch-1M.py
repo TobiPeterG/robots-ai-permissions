@@ -3,7 +3,7 @@
 Tranco-only domain list builder with PLD extraction & merge-sort + splitting.
 
 Usage:
-    ./fetch.py [--force]
+    ./01-fetch.py [--force]
 
 Produces under txt_downloads/YYYY-MM-DD/:
   domains_sorted.txt    merged sorted+unique PLDs
@@ -15,22 +15,20 @@ import sys
 import csv
 import shutil
 import argparse
+import io
+import zipfile
 
 from datetime import datetime as _dt, timezone
 from pathlib import Path
 from publicsuffix2 import get_sld
 import requests
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
 
 # ────────────────────────── CONFIGURATION ───────────────────────────────
 HERE = Path(__file__).parent
 TXT_ROOT = HERE / "txt_downloads"
 UA = "zrdz/0.4"
 SPLIT_SIZE = 10_000
-PARSE_WORKERS = os.cpu_count()
-
-WORKING_DIRECTORY = ""
 
 def die(msg: str) -> None:
     print(f"❌ {msg}", file=sys.stderr)
@@ -41,28 +39,37 @@ def fetch_to(url: str, dest: Path, headers=None) -> Path:
     if dest.exists():
         return dest
     hdr = {"User-Agent": UA, **(headers or {})}
+    dest.parent.mkdir(parents=True, exist_ok=True)
     with requests.get(url, headers=hdr, stream=True, timeout=90) as r:
         r.raise_for_status()
-        dest.parent.mkdir(parents=True, exist_ok=True)
         with open(dest, "wb") as f:
             for chunk in r.iter_content(1 << 16):
                 f.write(chunk)
     return dest
 
 def download_tranco(zones_dir: Path) -> set[str]:
-    """Fetch Tranco Top 1M and extract PLDs."""
+    """Fetch Tranco Top 1M zip, unpack CSV, and extract PLDs."""
+    zones_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = zones_dir / "tranco.zip"
+    print(f"⇢ downloading Tranco ZIP")
+    fetch_to("https://tranco-list.eu/top-1m.csv.zip", zip_path)
+
     plds: set[str] = set()
-    out_csv = zones_dir / "tranco.csv"
-    p = fetch_to(
-        "https://tranco-list.eu/download/X49QN/1000000",
-        out_csv
-    )
-    with open(p, newline="", encoding="utf-8") as fh:
-        reader = csv.reader(fh)
-        for _, dom in reader:
-            pld = get_sld(dom.lower())
-            if pld:
-                plds.add(pld)
+    print(f"⇢ unpacking and parsing CSV")
+    with zipfile.ZipFile(zip_path, "r") as z:
+        # find the first .csv entry
+        names = [n for n in z.namelist() if n.lower().endswith(".csv")]
+        if not names:
+            die("No CSV file found inside Tranco ZIP")
+        with z.open(names[0]) as csvfile:
+            # wrap binary stream in text
+            reader = csv.reader(io.TextIOWrapper(csvfile, encoding="utf-8"))
+            for _, dom in reader:
+                pld = get_sld(dom.lower())
+                if pld:
+                    plds.add(pld)
+
+    zip_path.unlink()
     return plds
 
 def write_sorted(plds: set[str], base: Path) -> Path:
@@ -107,16 +114,11 @@ def main():
         shutil.rmtree(base)
 
     # Prepare directories
-    for d in (zones_dir, splits_dir):
-        d.mkdir(parents=True, exist_ok=True)
-    global WORKING_DIRECTORY
-    WORKING_DIRECTORY = str(zones_dir)
-
+    (zones_dir).mkdir(parents=True, exist_ok=True)
     start = _dt.now(timezone.utc)
     print(f"🚀 {start.isoformat()} → {base}")
 
-    # download & collect PLDs from Tranco
-    print("⇢ downloading Tranco list and extracting PLDs")
+    # download & collect PLDs from Tranco zip
     plds = download_tranco(zones_dir)
 
     # write sorted unique PLDs

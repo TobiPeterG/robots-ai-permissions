@@ -20,6 +20,8 @@ import gzip
 import shutil
 import subprocess
 import argparse
+import io
+import zipfile
 
 from datetime import datetime as _dt, timezone
 from pathlib import Path
@@ -177,13 +179,24 @@ def download_cc(zones_dir: Path) -> Set[str]:
 
 
 def download_tranco(zones_dir: Path) -> Set[str]:
-    plds = set()
-    p = fetch_to("https://tranco-list.eu/download/X49QN/1000000", zones_dir / "tranco.csv")
-    with open(p, newline="") as fh:
-        for _, dom in csv.reader(fh):
-            d = get_sld(dom.lower())
-            if d:
-                plds.add(d)
+    """
+    Fetch Tranco Top 1M via the ZIP “tip” link, unpack and extract PLDs.
+    """
+    plds: Set[str] = set()
+    zones_dir.mkdir(parents=True, exist_ok=True)
+
+    zip_path = zones_dir / "tranco.zip"
+    fetch_to("https://tranco-list.eu/top-1m.csv.zip", zip_path)
+    with zipfile.ZipFile(zip_path, "r") as z:
+        # find the CSV inside the ZIP
+        csv_name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
+        with z.open(csv_name) as raw:
+            reader = csv.reader(io.TextIOWrapper(raw, encoding="utf-8", newline=""))
+            for _, dom in reader:
+                pld = get_sld(dom.lower())
+                if pld:
+                    plds.add(pld)
+    zip_path.unlink()  # clean up
     return plds
 
 
