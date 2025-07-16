@@ -21,7 +21,7 @@ Collection of tools to bulk-download a large corpus of domains, fetch and clean 
 3. **Install Python dependencies**
 
    ```bash
-   pip install requests tqdm publicsuffix2
+   pip install -r requirements.txt
    ```
 
 4. **(For `fetch-all`)** provide your ICANN CZDS credentials in `config.json`:
