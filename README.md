@@ -1,6 +1,22 @@
 # robots-ai-permissions
 
-Collection of tools to bulk-download a large corpus of domains, fetch and clean up their `robots.txt`, `ai.txt` and `llms.txt`, analyze overlap and conflicts, and generate summary reports.
+Collection of tools to bulk-download a large corpus of domains, fetch and clean up their `robots.txt`, `ai.txt` and `llms.txt`, analyze overlap and conflicts, and generate summary reports, as well as an already gathered [data set](/data/crawl/2025-07-05).
+
+## Use the Data Set
+
+To use the data set, you will first need to combine the 3 file parts. For this run the following commands in the directory with the split files:
+
+   ```bash
+   cat 2025-07-05.tar.gz* > 2025-07-05.tar.gz
+   ```
+   
+Afterwards, you can unpack the archive using:
+
+   ```bash
+   tar xf 2025-07-05.tar.gz
+   ```
+   
+Now you can run your own analysis on the data.
 
 ## 📦 Install
 
