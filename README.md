@@ -23,7 +23,7 @@ Now you can run your own analysis on the data.
 1. **Clone the repo**
 
    ```bash
-   git clone https://github.com/yourorg/robots-ai-permissions.git
+   git clone https://github.com/TobiPeterG/robots-ai-permissions.git
    cd robots-ai-permissions
    ```
 
